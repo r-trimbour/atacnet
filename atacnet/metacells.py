@@ -8,7 +8,7 @@ import scanpy as sc
 from rich.progress import track
 
 def compute_metacells(
-        AnnData,
+        adata,
         k=50,
         max_overlap_metacells=0.9,
         max_metacells=5000,
@@ -25,7 +25,7 @@ def compute_metacells(
 
     Parameters
     ----------
-    AnnData : AnnData
+    adata : AnnData
         AnnData object
     k : int, optional
         Number of neighbours to consider.
@@ -48,24 +48,34 @@ def compute_metacells(
 
     Returns
     -------
-    metacells_AnnData : AnnData
+    metacells : AnnData
         AnnData object containing metacells.
     """
-
-    lsi(AnnData)
     if dim_reduction == 'lsi':
-        sc.pp.neighbors(AnnData, use_rep="X_lsi", metric="cosine")
+        lsi(adata)
+        key_red = 'X_lsi'
+    elif dim_reduction == 'pca':
+        key_red = 'X_pca'
+        sc.tl.pca(adata)
+    elif dim_reduction == 'snap_spectral':
+        key_red = 'X_snap'
+        snap.tl.spectral(adata)
     else:
-        raise "Only LSI is implemented for now."
+        raise "Only LSI, pca and snap_spectral are implemented for now."
 
     if projection == 'umap':
-        sc.tl.umap(AnnData)
+        sc.pp.neighbors(adata, n_neighbors=k, use_rep=key_red, metric="cosine")
+        sc.tl.umap(adata)
+        sc.pp.neighbors(adata, n_neighbors=k, use_rep="X_umap", metric="cosine")
+        nbrs = NearestNeighbors(n_neighbors=k, algorithm='kd_tree').fit(adata.obsm['X_umap'])
+    elif projection == 'None':
+        sc.pp.neighbors(adata, n_neighbors=k, use_rep=key_red, metric="cosine")
+        nbrs = NearestNeighbors(n_neighbors=k, algorithm='kd_tree').fit(adata.X)
     else:
-        raise "Only UMAP is implemented for now."
+        raise "Only UMAP is implemented as projection for now."
 
     # Identify non-overlapping above a threshold metacells
-    nbrs = NearestNeighbors(n_neighbors=k, algorithm='kd_tree').fit(AnnData.obsm['X_umap'])
-    distances, indices = nbrs.kneighbors(AnnData.obsm['X_umap'])
+    distances, indices = nbrs.kneighbors(adata.obsm['X_umap'])
     indices = [set(indice) for indice in indices]
 
     # Select metacells that doesn't overlap too much (percentage of same cells of origin  < max_overlap_metacells for each pair)
@@ -88,30 +98,30 @@ def compute_metacells(
     metacells_values = []
     for metacell in metacells:
         if method == 'mean':
-            if sp.sparse.issparse(AnnData.X):
+            if sp.sparse.issparse(adata.X):
                 metacells_values.append(
-                    np.array(np.mean([AnnData.X[i].toarray() for i in metacell], 0))[0]
+                    np.array(np.mean([adata.X[i].toarray() for i in metacell], 0))[0]
                 )
             else:
                 metacells_values.append(
-                    np.mean([AnnData.X[i] for i in metacell], 0)
+                    np.mean([adata.X[i] for i in metacell], 0)
                 )
         elif method == 'sum':
-            if sp.sparse.issparse(AnnData.X):
+            if sp.sparse.issparse(adata.X):
                 metacells_values.append(
-                    np.array(sum([AnnData.X[i].toarray() for i in metacell]))[0]
+                    np.array(sum([adata.X[i].toarray() for i in metacell]))[0]
                 )
             else:
                 metacells_values.append(
-                    sum([AnnData.X[i] for i in metacell])
+                    sum([adata.X[i] for i in metacell])
                 )
 
     # Create a new AnnData object from it
     metacells_AnnData = ad.AnnData(np.array(metacells_values))
-    metacells_AnnData.var_names = AnnData.var_names
+    metacells_AnnData.var_names = adata.var_names
     metacells_AnnData.obs_names = [f"metacell_{i}" for i in range(len(metacells_values))]
-    metacells_AnnData.var = AnnData.var.copy()
-    metacells_AnnData.varp = AnnData.varp.copy()
+    metacells_AnnData.var = adata.var.copy()
+    metacells_AnnData.varp = adata.varp.copy()
 
     return metacells_AnnData
 
