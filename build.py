@@ -23,7 +23,7 @@ extensions = [
     Extension("atacnet.pyquic",
               packages=["atacnet", "atacnet.pyquic"],
               include_dirs=include_dirs,
-              sources=["atacnet/pyquic/QUIC.C", "atacnet/pyquic/pyquic.pyx"],
+              sources=["src/atacnet/pyquic/QUIC.C", "src/atacnet/pyquic/pyquic.pyx"],
               extra_compile_args=extra_compile_args,
               extra_link_args=extra_link_args,
               language="c++"

@@ -7,6 +7,9 @@ packages = \
 package_data = \
 {'': ['*']}
 
+package_dir = \
+{"":"src"}
+
 setup_kwargs = {
     'name': 'atacnet',
     'version': '0.1.0',
@@ -17,6 +20,7 @@ setup_kwargs = {
     'maintainer': 'Remi-Trimbour',
     'maintainer_email': 'remi.trimbour@gmail.com',
     'url': 'None',
+    'package_dir': package_dir,
     'packages': packages,
     'package_data': package_data,
     'python_requires': '>=3.8,<4.0',

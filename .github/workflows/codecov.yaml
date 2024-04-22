@@ -1,5 +1,9 @@
 name: Tests and code coverage
-on: [push, pull_request]
+on:
+  push:
+    branches: [main, master, src_folder]
+  pull_request:
+    branches: [main, master, src_folder]
 jobs:
   run:
     runs-on: ubuntu-latest
