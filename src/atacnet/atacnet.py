@@ -731,27 +731,39 @@ def reconcile(
     results_keys = list(results_gl.keys())
     print("Averaging co-accessibility scores across windows...")
 
-    # Sum of values per non-null locations
+    #################
+    ### To keep entries contained in 2 windows
+
+    # sum of values per non-null locations
     average = reduce(lambda x, y: x+y,
                      [results_gl[k] for k in results_keys])
 
-    # remove all values where there is no sign agreement between windows
+    # extract all values where there is no sign agreement between windows
+    signs_disaggreeing = reduce(
+        lambda x, y: sp.sparse.csr_matrix.multiply((x < 0), (y > 0)),
+        [results_gl[k] for k in results_keys])
+    signs_disaggreeing += reduce(
+        lambda x, y: sp.sparse.csr_matrix.multiply((x < 0), (y > 0)),
+        [results_gl[k] for k in results_keys])
+
+    disagreeing_values = sp.sparse.csr_matrix.multiply(
+        average, signs_disaggreeing)
+
+    # Substract disagreeing values
+    average = average - disagreeing_values
+    del disagreeing_values
+
+    # Identify the indices where there is 2 non-null values
     signs_aggreeing = reduce(
         lambda x, y: sp.sparse.csr_matrix.multiply((x < 0), (y < 0)),
         [results_gl[k] for k in results_keys])
     signs_aggreeing += reduce(
         lambda x, y: sp.sparse.csr_matrix.multiply((x > 0), (y > 0)),
         [results_gl[k] for k in results_keys])
-    
-    average = sp.sparse.csr_matrix.multiply(average, signs_aggreeing)
 
-    # Number of non-null values per locations
-    divider = reduce(lambda x, y: x+y,
-                     [results_gl[k].astype(bool).astype(int)
-                      for k in results_keys])
-    divider = sp.sparse.csr_matrix.multiply(divider, signs_aggreeing)
+    divider = (average != 0).astype(int) + signs_aggreeing.astype(int)
 
-    # divide sum by number of non-null values, only for actual non-null values
+    # Divide the sum by number of non-null values, only for actual non-null values
     average.data = average.data/divider.data
 
     return sp.sparse.coo_matrix(average)
