@@ -458,9 +458,15 @@ def average_alpha(
                 end = start + window_size
                 # Get global indices of regions in the window
                 idx = np.where(
-                    ((anndata.var["chromosome"] == chromosome)
-                     & (anndata.var["start"] >= start)
-                     & (anndata.var["start"] <= end)))[0]
+                    (anndata.var["chromosome"] == chromosome)
+                    & (
+                        ((anndata.var["start"] > start)
+                         & (anndata.var["start"] < end-1))
+                        |
+                        ((anndata.var["end"] > start)
+                         & (anndata.var["end"] < end-1))
+                      )
+                    )[0]
 
                 if 0 < len(idx) < 200:
                     idx_list.append(idx)
@@ -637,9 +643,15 @@ def sliding_graphical_lasso(
                 end = start + window_size
                 # Get global indices of regions in the window
                 idx = np.where(
-                    ((anndata.var["chromosome"] == chromosome)
-                     & (anndata.var["start"] >= start)
-                     & (anndata.var["start"] <= end)))[0]
+                    (anndata.var["chromosome"] == chromosome)
+                    & (
+                        ((anndata.var["start"] > start)
+                         & (anndata.var["start"] < end-1))
+                        |
+                        ((anndata.var["end"] > start)
+                         & (anndata.var["end"] < end-1))
+                      )
+                    )[0]
 
                 # Add to the list of all regions used to know how many
                 # times each region is used
